@@ -1,0 +1,161 @@
+{
+  "description": "Set de evaluación fijo (T08). 20 preguntas sobre los 2 PDFs de eval/docs: 12 con la respuesta en una página, 4 que juntan dos fragmentos y 4 sin respuesta. 'pages' son números de página del PDF (los mismos que guarda rag_chunks.page). 'evidence' son frases literales de esas páginas, para comprobar el set.",
+  "documents": {
+    "manual": "manual-cafetera-aurora.pdf",
+    "contrato": "contrato-arrendamiento-vivienda.pdf"
+  },
+  "questions": [
+    {
+      "id": 1,
+      "type": "single",
+      "question": "¿Qué presión tiene la bomba de la cafetera?",
+      "expected_answer": "15 bar.",
+      "sources": [{ "document": "manual", "page": 3, "evidence": "Presión de la bomba: 15 bar" }]
+    },
+    {
+      "id": 2,
+      "type": "single",
+      "question": "¿Cada cuánto tiempo hay que descalcificar la cafetera?",
+      "expected_answer": "Cada 300 cafés o cada 3 meses, lo que ocurra primero (cada 2 meses con agua muy dura).",
+      "sources": [{ "document": "manual", "page": 9, "evidence": "cada 300 cafés o cada 3 meses" }]
+    },
+    {
+      "id": 3,
+      "type": "single",
+      "question": "¿Qué significa el código de error E3?",
+      "expected_answer": "Fallo del sensor de temperatura: hay que apagar y desenchufar la cafetera y contactar con el servicio técnico, sin intentar repararla.",
+      "sources": [{ "document": "manual", "page": 10, "evidence": "Código E3: fallo del sensor de temperatura" }]
+    },
+    {
+      "id": 4,
+      "type": "single",
+      "question": "¿Cuántos gramos de café necesito para un espresso doble?",
+      "expected_answer": "14 gramos, en el filtro de dos tazas.",
+      "sources": [{ "document": "manual", "page": 5, "evidence": "para un espresso doble use 14 gramos" }]
+    },
+    {
+      "id": 5,
+      "type": "single",
+      "question": "¿A qué temperatura debo calentar la leche con el vaporizador?",
+      "expected_answer": "Entre 60 y 65 °C.",
+      "sources": [{ "document": "manual", "page": 6, "evidence": "entre 60 y 65" }]
+    },
+    {
+      "id": 6,
+      "type": "single",
+      "question": "How long is the coffee machine's warranty?",
+      "expected_answer": "2 years from the date of purchase (3 years if the product is registered within 30 days). The answer must be in English.",
+      "sources": [{ "document": "manual", "page": 11, "evidence": "durante 2 años desde la fecha de compra" }]
+    },
+    {
+      "id": 7,
+      "type": "single",
+      "question": "¿Cuál es el teléfono del servicio técnico y en qué horario atienden?",
+      "expected_answer": "900 123 456 (gratuito), de lunes a viernes de 9:00 a 18:00.",
+      "sources": [{ "document": "manual", "page": 12, "evidence": "Teléfono: 900 123 456" }]
+    },
+    {
+      "id": 8,
+      "type": "single",
+      "question": "¿Cuánto es la renta mensual del piso?",
+      "expected_answer": "1.150 euros al mes.",
+      "sources": [{ "document": "contrato", "page": 3, "evidence": "La renta pactada es de 1.150 euros mensuales" }]
+    },
+    {
+      "id": 9,
+      "type": "single",
+      "question": "¿Cuándo entra en vigor el contrato de alquiler?",
+      "expected_answer": "El 1 de marzo de 2026, con una duración inicial de un año.",
+      "sources": [{ "document": "contrato", "page": 2, "evidence": "entra en vigor el 1 de marzo de 2026" }]
+    },
+    {
+      "id": 10,
+      "type": "single",
+      "question": "¿Puedo tener un perro en el piso?",
+      "expected_answer": "Sí, un animal doméstico de menos de 15 kg, comunicándolo por escrito a la arrendadora y respondiendo de los daños; otros animales requieren autorización escrita.",
+      "sources": [{ "document": "contrato", "page": 6, "evidence": "un animal doméstico de menos de 15 kg" }]
+    },
+    {
+      "id": 11,
+      "type": "single",
+      "question": "¿Quién paga el IBI?",
+      "expected_answer": "La arrendadora (también los gastos de comunidad).",
+      "sources": [{ "document": "contrato", "page": 5, "evidence": "Impuesto sobre Bienes Inmuebles (IBI)" }]
+    },
+    {
+      "id": 12,
+      "type": "single",
+      "question": "¿Con cuánta antelación tiene que avisar la propietaria antes de entrar en la vivienda?",
+      "expected_answer": "Al menos 48 horas, salvo urgencias como una fuga de agua.",
+      "sources": [{ "document": "contrato", "page": 7, "evidence": "al menos 48 horas de antelación" }]
+    },
+    {
+      "id": 13,
+      "type": "multi",
+      "question": "¿Cuánto dinero tengo que entregar a la firma entre fianza y garantía adicional, y cuánto pagaré cada mes de renta?",
+      "expected_answer": "A la firma, 3.450 euros (1.150 de fianza + 2.300 de garantía adicional); de renta, 1.150 euros al mes.",
+      "sources": [
+        { "document": "contrato", "page": 4, "evidence": "es decir, 2.300 euros" },
+        { "document": "contrato", "page": 3, "evidence": "La renta pactada es de 1.150 euros mensuales" }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "multi",
+      "question": "Me parpadea la luz naranja de la cafetera. ¿Qué tengo que hacer y qué pasa con la garantía si no lo hago?",
+      "expected_answer": "Hay que descalcificarla (500 ml de solución Aurora + 500 ml de agua, programa de unos 25 minutos y luego aclarado). Si no se descalcifica según el manual, las averías por cal no las cubre la garantía.",
+      "sources": [
+        { "document": "manual", "page": 9, "evidence": "el indicador naranja parpadea" },
+        { "document": "manual", "page": 11, "evidence": "las averías causadas por la cal" }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "multi",
+      "question": "Si quiero dejar el piso a los ocho meses, ¿con cuánto preaviso tengo que avisar y cuándo me devuelven la fianza?",
+      "expected_answer": "Puede desistir porque ya pasaron seis meses, avisando por escrito con al menos 30 días (con la indemnización proporcional pactada). La fianza y la garantía se devuelven en 30 días desde la entrega de las llaves, descontando daños o deudas.",
+      "sources": [
+        { "document": "contrato", "page": 2, "evidence": "una antelación mínima de 30 días" },
+        { "document": "contrato", "page": 4, "evidence": "en el plazo de 30 días desde la entrega de las llaves" }
+      ]
+    },
+    {
+      "id": 16,
+      "type": "multi",
+      "question": "¿Qué potencia consume la cafetera y a los cuántos minutos se apaga sola?",
+      "expected_answer": "1450 W; se apaga sola tras 25 minutos sin uso (configurable a 15 o 60).",
+      "sources": [
+        { "document": "manual", "page": 3, "evidence": "Potencia: 1450 W" },
+        { "document": "manual", "page": 7, "evidence": "se apaga sola tras 25 minutos sin uso" }
+      ]
+    },
+    {
+      "id": 17,
+      "type": "none",
+      "question": "¿La cafetera es compatible con cápsulas?",
+      "expected_answer": "No lo encuentro en tus documentos",
+      "sources": []
+    },
+    {
+      "id": 18,
+      "type": "none",
+      "question": "¿Cuánto cuesta la cafetera Aurora CX-200?",
+      "expected_answer": "No lo encuentro en tus documentos",
+      "sources": []
+    },
+    {
+      "id": 19,
+      "type": "none",
+      "question": "¿Está permitido fumar dentro de la vivienda?",
+      "expected_answer": "No lo encuentro en tus documentos",
+      "sources": []
+    },
+    {
+      "id": 20,
+      "type": "none",
+      "question": "¿Cuál es la capital de Australia?",
+      "expected_answer": "No lo encuentro en tus documentos",
+      "sources": []
+    }
+  ]
+}
