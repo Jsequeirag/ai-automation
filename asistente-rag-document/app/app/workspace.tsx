@@ -13,9 +13,11 @@ type View = {
   id: string | null;
   /** null mientras se carga el historial. */
   messages: ChatUIMessage[] | null;
+  /** Documentos en los que busca (vacío = todos). */
+  documentIds: string[];
 };
 
-const newView = (): View => ({ key: crypto.randomUUID(), id: null, messages: [] });
+const newView = (): View => ({ key: crypto.randomUUID(), id: null, messages: [], documentIds: [] });
 
 function setUrl(id: string | null) {
   const url = new URL(window.location.href);
@@ -35,7 +37,7 @@ function toUIMessages(detail: ConversationDetail): ChatUIMessage[] {
 
 export function Workspace({ children }: { children: React.ReactNode }) {
   const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
-  const [view, setView] = useState<View>({ key: "inicial", id: null, messages: [] });
+  const [view, setView] = useState<View>({ key: "inicial", id: null, messages: [], documentIds: [] });
   const [error, setError] = useState<string | null>(null);
   const opening = useRef<string | null>(null);
 
@@ -54,7 +56,9 @@ export function Workspace({ children }: { children: React.ReactNode }) {
         if (opening.current !== id) return; // se abrió otra mientras tanto
         if (!res.ok) throw new Error(res.status === 404 ? "Esa conversación ya no existe." : "");
         const detail = (await res.json()) as ConversationDetail;
-        if (opening.current === id) setView({ key: id, id, messages: toUIMessages(detail) });
+        if (opening.current === id) {
+          setView({ key: id, id, messages: toUIMessages(detail), documentIds: detail.document_ids });
+        }
       })
       .catch((err: Error) => {
         if (opening.current !== id) return;
@@ -66,7 +70,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
 
   function open(id: string) {
     setError(null);
-    setView({ key: id, id, messages: null });
+    setView({ key: id, id, messages: null, documentIds: [] });
     setUrl(id);
     load(id);
   }
@@ -144,6 +148,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
             key={view.key}
             conversationId={view.id}
             initialMessages={view.messages}
+            initialDocumentIds={view.documentIds}
             onCreated={handleCreated}
             onAnswered={refresh}
           />

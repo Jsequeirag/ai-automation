@@ -63,3 +63,46 @@ export function extractCitations(
       };
     });
 }
+
+// ─────────────── Reescritura con historial (T13) ───────────────
+
+/** Turnos previos que se mandan para reescribir (3 preguntas con sus respuestas). */
+export const REWRITE_HISTORY_MESSAGES = 6;
+const REWRITE_ANSWER_CHARS = 600;
+
+const REWRITE_PROMPT = `Reescribes preguntas para buscarlas en los documentos del usuario.
+Recibes una conversación y la última pregunta del usuario. Devuelve esa pregunta reescrita como una pregunta completa que se entienda sin la conversación: sustituye "eso", "y el plazo?", "¿y en el otro?" y similares por aquello a lo que se refieren.
+
+Reglas:
+- Si la pregunta ya se entiende sola, devuélvela igual.
+- Si es solo un tema o unas palabras sueltas, conviértela en una pregunta sobre qué dicen los documentos de ese tema.
+- Mantén el idioma de la última pregunta.
+- No la respondas ni añadas información que el usuario no pidió.
+- Devuelve solo la pregunta, en una línea, sin comillas ni explicaciones.`;
+
+/** Mensajes para reescribir la pregunta; history va del más antiguo al más reciente. */
+export function buildRewriteMessages(history: ChatMessage[], question: string): ChatMessage[] {
+  const transcript = history
+    .map((m) => {
+      // Sin las marcas [n]: al reescribir no sirven y confunden.
+      const text = m.content.replace(/\s*\[\d+(?:\s*,\s*\d+)*\]/g, "").trim();
+      const short = text.length > REWRITE_ANSWER_CHARS ? `${text.slice(0, REWRITE_ANSWER_CHARS)}…` : text;
+      return `${m.role === "user" ? "Usuario" : "Asistente"}: ${short}`;
+    })
+    .join("\n");
+  return [
+    { role: "system", content: REWRITE_PROMPT },
+    { role: "user", content: `Conversación:\n${transcript}\n\nÚltima pregunta: ${question}` },
+  ];
+}
+
+/** Limpia la salida del LLM; si no parece una pregunta usable, se queda la original. */
+export function cleanRewrite(output: string, original: string): string {
+  const line = output
+    .trim()
+    .split("\n")[0]
+    .replace(/^(pregunta( reescrita)?|question)\s*:\s*/i, "")
+    .replace(/^["'«“]+|["'»”]+$/g, "")
+    .trim();
+  return line && line.length <= 500 ? line : original;
+}

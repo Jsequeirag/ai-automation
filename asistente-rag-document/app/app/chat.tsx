@@ -5,6 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { ChatUIMessage } from "@/lib/chat-types";
 import { AnswerText, CitationPanel, SourceList } from "./citations";
+import { DocumentPicker } from "./document-picker";
 
 // Chat de una conversación: respuesta en streaming, citas clicables (T10–T11) e historial (T12).
 // Si es nueva, la conversación se crea al enviar la primera pregunta.
@@ -25,17 +26,21 @@ const seconds = (ms: number) => `${(ms / 1000).toLocaleString("es", { maximumFra
 export function Chat({
   conversationId,
   initialMessages,
+  initialDocumentIds,
   onCreated,
   onAnswered,
 }: {
   conversationId: string | null;
   initialMessages: ChatUIMessage[];
+  initialDocumentIds: string[];
   onCreated: (id: string) => void;
   onAnswered: () => void;
 }) {
   const [input, setInput] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [documentIds, setDocumentIds] = useState(initialDocumentIds);
+  const [pickerError, setPickerError] = useState<string | null>(null);
   const idRef = useRef(conversationId);
   const { messages, sendMessage, status, error } = useChat<ChatUIMessage>({
     transport,
@@ -52,7 +57,11 @@ export function Chat({
     let id = idRef.current;
     if (!id) {
       setCreating(true);
-      const res = await fetch("/api/conversations", { method: "POST" }).catch(() => null);
+      const res = await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ document_ids: documentIds }),
+      }).catch(() => null);
       setCreating(false);
       if (!res?.ok) {
         setCreateError("No se pudo crear la conversación. Inténtalo de nuevo.");
@@ -66,9 +75,32 @@ export function Chat({
     setInput("");
   }
 
+  // Conversación ya creada: se guarda al momento. Nueva: se manda al crearla.
+  async function changeDocuments(ids: string[]) {
+    const before = documentIds;
+    setDocumentIds(ids);
+    setPickerError(null);
+    if (!idRef.current) return;
+    const res = await fetch(`/api/conversations/${idRef.current}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ document_ids: ids }),
+    }).catch(() => null);
+    if (!res?.ok) {
+      setDocumentIds(before);
+      setPickerError("No se pudo guardar la selección de documentos.");
+    }
+  }
+
   return (
     <section className="mt-8 flex flex-col gap-4">
       <h2 className="text-lg font-semibold">Pregunta a tus documentos</h2>
+      <DocumentPicker selected={documentIds} onChange={changeDocuments} disabled={busy} />
+      {pickerError && (
+        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+          {pickerError}
+        </p>
+      )}
 
       <ul className="flex flex-col gap-4">
         {messages.map((m) => {

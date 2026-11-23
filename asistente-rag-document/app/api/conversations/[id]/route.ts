@@ -1,6 +1,6 @@
 import { getUser } from "@/lib/supabase/server";
 import { jsonError, unauthorized } from "@/lib/http";
-import { hydrateCitations } from "@/lib/conversations";
+import { hydrateCitations, isUuidList, ownDocumentIds } from "@/lib/conversations";
 import type { ConversationDetail, StoredCitation } from "@/lib/chat-types";
 
 /**
@@ -50,4 +50,45 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/conversatio
     messages: rows.map((m, i) => ({ id: m.id, role: m.role, content: m.content, citations: citations[i] })),
   };
   return Response.json(detail);
+}
+
+/**
+ * PATCH /api/conversations/:id {document_ids} → 200 {id, document_ids}.
+ * Elige en qué documentos busca la conversación (vacío = todos). Solo se aceptan documentos propios.
+ */
+export async function PATCH(request: Request, ctx: RouteContext<"/api/conversations/[id]">) {
+  const { id } = await ctx.params;
+  const { supabase, user } = await getUser();
+  if (!user) return unauthorized();
+
+  let body: { document_ids?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return jsonError(400, "La petición no es JSON válido.");
+  }
+  if (!isUuidList(body.document_ids)) return jsonError(400, "document_ids no es válido.");
+
+  let documentIds: string[] | null;
+  try {
+    documentIds = await ownDocumentIds(supabase, user.id, body.document_ids);
+  } catch (err) {
+    console.error("[conversation] documentos:", err);
+    return jsonError(500, "No se pudo guardar la selección.");
+  }
+  if (!documentIds) return jsonError(400, "Alguno de los documentos elegidos no existe.");
+
+  const { data, error } = await supabase
+    .from("rag_conversations")
+    .update({ document_ids: documentIds })
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .select("id, document_ids")
+    .maybeSingle();
+  if (error) {
+    console.error("[conversation] patch:", error.message);
+    return jsonError(500, "No se pudo guardar la selección.");
+  }
+  if (!data) return jsonError(404, "No se encontró la conversación.");
+  return Response.json(data);
 }

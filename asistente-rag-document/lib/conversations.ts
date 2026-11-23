@@ -3,6 +3,31 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Citation, StoredCitation } from "./chat-types";
 
 const TITLE_CHARS = 60;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** ¿Es una lista de ids de documento (uuid) bien formada? */
+export const isUuidList = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every((id) => typeof id === "string" && UUID.test(id));
+
+/**
+ * Comprueba que todos los ids son documentos del usuario y los devuelve sin repetir.
+ * null si alguno no existe o es de otra persona.
+ */
+export async function ownDocumentIds(
+  supabase: SupabaseClient,
+  userId: string,
+  ids: string[],
+): Promise<string[] | null> {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return [];
+  const { data, error } = await supabase
+    .from("rag_documents")
+    .select("id")
+    .eq("user_id", userId)
+    .in("id", unique);
+  if (error) throw new Error(error.message);
+  return data.length === unique.length ? unique : null;
+}
 
 /** Título de la conversación: la primera pregunta, cortada en una palabra si es larga. */
 export function titleFrom(question: string) {

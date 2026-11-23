@@ -24,9 +24,9 @@ Cinco fases en orden; cada tarea cierra con una comprobación concreta y no se e
 
 ## Fase 3 · Conversación (H4, H5)
 
-- [ ] T12 Guardar mensajes y citas; lista de conversaciones con título tomado de la primera pregunta. *Prueba: al recargar se ve el historial.*
-- [ ] T13 Reescritura de la pregunta con historial (solo si lo hay). *Prueba: "¿y el plazo?" tras una respuesta sobre un contrato encuentra el plazo.*
-- [ ] T14 Selector de documentos por conversación (`PATCH /api/conversations/:id`). *Prueba: solo se citan los marcados.*
+- [x] T12 Guardar mensajes y citas; lista de conversaciones con título tomado de la primera pregunta. *Prueba: al recargar se ve el historial.* Resultado: tras F5 se ve la misma conversación (`?c=id`) con sus 3 preguntas, respuestas y citas clicables; las citas guardadas solo llevan `{n, document_id, page, chunk_id}` y el texto se lee de `rag_chunks` al cargar.
+- [x] T13 Reescritura de la pregunta con historial (solo si lo hay). *Prueba: "¿y el plazo?" tras una respuesta sobre un contrato encuentra el plazo.* Resultado: tras "¿Cuánto dura el contrato de arrendamiento?", "¿y el plazo de preaviso?" responde los 30 días (no renovar y desistir) citando el contrato, pág. 2. Ojo latencia: primer token 3,3–4,3 s con búsqueda ~2,1 s (revisar antes de T15).
+- [x] T14 Selector de documentos por conversación (`PATCH /api/conversations/:id`). *Prueba: solo se citan los marcados.* Resultado: con solo el contrato marcado, "¿Cuánto dura la garantía?" cita solo el contrato (pág. 4); con solo el manual, solo el manual (pág. 11); la selección sigue tras F5.
 
 ## Fase 4 · Calidad y entrega
 
