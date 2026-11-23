@@ -1,35 +1,68 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { ChatUIMessage } from "@/lib/chat-types";
 import { AnswerText, CitationPanel, SourceList } from "./citations";
 
-// Chat con respuesta en streaming y citas clicables (T10–T11). El historial guardado llega en T12.
+// Chat de una conversación: respuesta en streaming, citas clicables (T10–T11) e historial (T12).
+// Si es nueva, la conversación se crea al enviar la primera pregunta.
 
 const transport = new DefaultChatTransport<ChatUIMessage>({
   api: "/api/chat",
-  // El servidor solo necesita la última pregunta (contrato de plan.md).
-  prepareSendMessagesRequest: ({ messages }) => {
+  // El servidor solo necesita la conversación y la última pregunta (contrato de plan.md);
+  // el historial ya lo tiene guardado.
+  prepareSendMessagesRequest: ({ messages, body }) => {
     const last = messages[messages.length - 1];
     const message = last?.parts.map((p) => (p.type === "text" ? p.text : "")).join("") ?? "";
-    return { body: { conversation_id: null, message } };
+    return { body: { conversation_id: body?.conversation_id, message } };
   },
 });
 
 const seconds = (ms: number) => `${(ms / 1000).toLocaleString("es", { maximumFractionDigits: 1 })} s`;
 
-export function Chat() {
+export function Chat({
+  conversationId,
+  initialMessages,
+  onCreated,
+  onAnswered,
+}: {
+  conversationId: string | null;
+  initialMessages: ChatUIMessage[];
+  onCreated: (id: string) => void;
+  onAnswered: () => void;
+}) {
   const [input, setInput] = useState("");
-  const { messages, sendMessage, status, error } = useChat<ChatUIMessage>({ transport });
-  const busy = status === "submitted" || status === "streaming";
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const idRef = useRef(conversationId);
+  const { messages, sendMessage, status, error } = useChat<ChatUIMessage>({
+    transport,
+    messages: initialMessages,
+    onFinish: onAnswered, // refresca la lista (título de la conversación nueva)
+  });
+  const busy = creating || status === "submitted" || status === "streaming";
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     const text = input.trim();
     if (!text || busy) return;
-    sendMessage({ text });
+    setCreateError(null);
+    let id = idRef.current;
+    if (!id) {
+      setCreating(true);
+      const res = await fetch("/api/conversations", { method: "POST" }).catch(() => null);
+      setCreating(false);
+      if (!res?.ok) {
+        setCreateError("No se pudo crear la conversación. Inténtalo de nuevo.");
+        return;
+      }
+      id = ((await res.json()) as { id: string }).id;
+      idRef.current = id;
+      onCreated(id);
+    }
+    sendMessage({ text }, { body: { conversation_id: id } });
     setInput("");
   }
 
@@ -52,9 +85,9 @@ export function Chat() {
         {status === "submitted" && <li className="text-sm text-zinc-500">Buscando en tus documentos…</li>}
       </ul>
 
-      {error && (
+      {(error || createError) && (
         <p role="alert" className="text-sm text-red-700 dark:text-red-400">
-          {readableError(error)}
+          {createError ?? readableError(error!)}
         </p>
       )}
 

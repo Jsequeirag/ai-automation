@@ -80,7 +80,7 @@ export function SourceList({
             aria-expanded={openN === c.n}
             className="text-left hover:underline focus-visible:outline-2"
           >
-            [{c.n}] {c.document}, pág. {c.page}
+            [{c.n}] {c.deleted ? "Fuente borrada" : `${c.document}, pág. ${c.page}`}
           </button>
         </li>
       ))}
@@ -95,9 +95,10 @@ type UrlState = { kind: "loading" } | { kind: "ok"; url: string } | { kind: "del
  * así la URL de 10 min siempre está fresca); un 404 significa que el documento se borró.
  */
 export function CitationPanel({ citation, onClose }: { citation: Citation; onClose: () => void }) {
-  const [state, setState] = useState<UrlState>({ kind: "loading" });
+  const [state, setState] = useState<UrlState>(citation.deleted ? { kind: "deleted" } : { kind: "loading" });
 
   useEffect(() => {
+    if (citation.deleted) return; // ya se sabe al cargar el historial: no hay a qué enlazar
     let cancelled = false;
     fetch(`/api/documents/${citation.document_id}/url?page=${citation.page}`)
       .then(async (res) => {
@@ -111,7 +112,7 @@ export function CitationPanel({ citation, onClose }: { citation: Citation; onClo
     return () => {
       cancelled = true;
     };
-  }, [citation.document_id, citation.page]);
+  }, [citation.deleted, citation.document_id, citation.page]);
 
   return (
     <aside

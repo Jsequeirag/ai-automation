@@ -4,6 +4,7 @@ import { jsonError, unauthorized } from "@/lib/http";
 import { aboveThreshold, retrieve } from "@/lib/retrieval";
 import { streamChat } from "@/lib/llm";
 import { buildAnswerMessages, extractCitations } from "@/lib/prompt";
+import { titleFrom, toStored } from "@/lib/conversations";
 import { NOT_FOUND, type ChatMetadata, type ChatUIMessage } from "@/lib/chat-types";
 
 export const maxDuration = 30;
@@ -11,9 +12,10 @@ export const maxDuration = 30;
 const MAX_QUESTION_CHARS = 2000;
 
 /**
- * POST /api/chat {conversation_id?, message} → stream de mensaje del AI SDK.
+ * POST /api/chat {conversation_id, message} → stream de mensaje del AI SDK.
  * Las citas usadas van en la metadata del mensaje al terminar.
- * T10: sin historial ni guardado (T12/T13); conversation_id solo limita los documentos.
+ * Guarda la pregunta antes de responder y la respuesta (con sus citas, sin texto) al final.
+ * La primera pregunta da el título a la conversación. Sin reescritura con historial (T13).
  */
 export async function POST(request: Request) {
   const t0 = performance.now();
@@ -35,18 +37,32 @@ export async function POST(request: Request) {
     return jsonError(400, `La pregunta no puede pasar de ${MAX_QUESTION_CHARS} caracteres.`);
   }
 
+  if (typeof body.conversation_id !== "string") return jsonError(400, "Falta la conversación.");
+  const conversationId = body.conversation_id;
+  const { data: conversation } = await supabase
+    .from("rag_conversations")
+    .select("title, document_ids")
+    .eq("id", conversationId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!conversation) return jsonError(404, "No se encontró la conversación.");
   // Documentos de la conversación (vacío = todos los del usuario).
-  let docIds: string[] = [];
-  if (body.conversation_id != null) {
-    if (typeof body.conversation_id !== "string") return jsonError(400, "conversation_id no es válido.");
-    const { data: conversation } = await supabase
+  const docIds: string[] = conversation.document_ids ?? [];
+
+  // La pregunta se guarda primero: cuenta para el límite diario aunque la respuesta falle.
+  const { error: saveQuestionError } = await supabase
+    .from("rag_messages")
+    .insert({ conversation_id: conversationId, user_id: user.id, role: "user", content: question });
+  if (saveQuestionError) {
+    console.error("[chat] guardar pregunta:", saveQuestionError.message);
+    return jsonError(500, "No se pudo guardar la pregunta.");
+  }
+  if (!conversation.title) {
+    await supabase
       .from("rag_conversations")
-      .select("document_ids")
-      .eq("id", body.conversation_id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (!conversation) return jsonError(404, "No se encontró la conversación.");
-    docIds = conversation.document_ids ?? [];
+      .update({ title: titleFrom(question) })
+      .eq("id", conversationId)
+      .eq("user_id", user.id);
   }
 
   let chunks;
@@ -98,6 +114,17 @@ export async function POST(request: Request) {
       writer.write({ type: "text-end", id: textId });
 
       const citations = found ? extractCitations(answer, chunks, docNames) : [];
+
+      // Se guarda antes de "finish": si el usuario recarga justo al terminar, ya está.
+      const { error: saveAnswerError } = await supabase.from("rag_messages").insert({
+        conversation_id: conversationId,
+        user_id: user.id,
+        role: "assistant",
+        content: answer,
+        citations: toStored(citations),
+      });
+      if (saveAnswerError) console.error("[chat] guardar respuesta:", saveAnswerError.message);
+
       const metadata: ChatMetadata = { citations, timings: { retrievalMs, firstTokenMs, totalMs: ms() } };
       writer.write({ type: "finish", messageMetadata: metadata });
 
